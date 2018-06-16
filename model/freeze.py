@@ -106,7 +106,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--clip_stride_ms',
       type=int,
-      default=30,
+      default=30.0,
       help='How often to run recognition. Useful for models with cache.',)
   parser.add_argument(
       '--window_size_ms',
@@ -126,12 +126,12 @@ if __name__ == '__main__':
   parser.add_argument(
       '--start_checkpoint',
       type=str,
-      default='',
+      default='./llconv_speech_commands_train/low_latency_conv.ckpt-240000',
       help='If specified, restore this pretrained model before any training.')
   parser.add_argument(
       '--model_architecture',
       type=str,
-      default='conv',
+      default='low_latency_conv',
       help='What model architecture to use')
   parser.add_argument(
       '--wanted_words',
@@ -139,6 +139,7 @@ if __name__ == '__main__':
       default='yes,no,up,down,left,right,on,off,stop,go',
       help='Words to use (others will be added to an unknown label)',)
   parser.add_argument(
-      '--output_file', type=str, help='Where to save the frozen graph.')
+      '--output_file', type=str,default='llconv_graph.pb', help='Where to save the frozen graph.')
+
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

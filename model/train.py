@@ -2,6 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from multiprocessing import Pool
+from multiprocessing import cpu_count
+
 import argparse
 import os.path
 import sys
@@ -88,7 +91,7 @@ def main(_):
   predicted_indices = tf.argmax(logits, 1)
   expected_indices = tf.argmax(ground_truth_input, 1)
   correct_prediction = tf.equal(predicted_indices, expected_indices)
-  confusion_matrix = tf.confusion_matrix(expected_indices, predicted_indices)
+  confusion_matrix = tf.confusion_matrix(expected_indices, predicted_indices, num_classes=label_count)
   evaluation_step = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
   tf.summary.scalar('accuracy', evaluation_step)
 
@@ -147,7 +150,7 @@ def main(_):
             fingerprint_input: train_fingerprints,
             ground_truth_input: train_ground_truth,
             learning_rate_input: learning_rate_value,
-            dropout_prob: 0.5
+            dropout_prob: 1.0
         })
     train_writer.add_summary(train_summary, training_step)
     tf.logging.info('Step #%d: rate %f, accuracy %.1f%%, cross entropy %f' %
@@ -227,54 +230,54 @@ if __name__ == '__main__':
   parser.add_argument(
       '--data_dir',
       type=str,
-      default='/tmp/speech_dataset/',
+      default='./data/speech_dataset/',
       help="""\
       Where to download the speech training data to.
       """)
   parser.add_argument(
       '--background_volume',
       type=float,
-      default=0.1,
+      default=0.8,
       help="""\
       How loud the background noise should be, between 0 and 1.
       """)
   parser.add_argument(
       '--background_frequency',
       type=float,
-      default=0.7,
+      default=0.2,
       help="""\
       How many of the training samples have background noise mixed in.
       """)
   parser.add_argument(
       '--silence_percentage',
       type=float,
-      default=10.0,
+      default=5.0,
       help="""\
       How much of the training data should be silence.
       """)
   parser.add_argument(
       '--unknown_percentage',
       type=float,
-      default=10.0,
+      default=5.0,
       help="""\
       How much of the training data should be unknown words.
       """)
   parser.add_argument(
       '--time_shift_ms',
       type=float,
-      default=120.0,
+      default=100.0,
       help="""\
       Range to randomly shift the training audio by in time.
       """)
   parser.add_argument(
       '--testing_percentage',
       type=int,
-      default=10,
+      default=5,
       help='What percentage of wavs to use as a test set.')
   parser.add_argument(
       '--validation_percentage',
       type=int,
-      default=10,
+      default=5,
       help='What percentage of wavs to use as a validation set.')
   parser.add_argument(
       '--sample_rate',
@@ -304,27 +307,27 @@ if __name__ == '__main__':
   parser.add_argument(
       '--how_many_training_steps',
       type=str,
-      default='30000,6000',
+      default='200000,40000',
       help='How many training loops to run',)
   parser.add_argument(
       '--eval_step_interval',
       type=int,
-      default=400,
+      default=10000,
       help='How often to evaluate the training results.')
   parser.add_argument(
       '--learning_rate',
       type=str,
-      default='0.0005,0.00005',
+      default='0.001,0.0001',
       help='How large a learning rate to use when training.')
   parser.add_argument(
       '--batch_size',
       type=int,
-      default=50,
+      default=48,
       help='How many items to train with at once',)
   parser.add_argument(
       '--summaries_dir',
       type=str,
-      default='/tmp/retrain_logs',
+      default='./retrain_logs',
       help='Where to save summary logs for TensorBoard.')
   parser.add_argument(
       '--wanted_words',
@@ -334,12 +337,12 @@ if __name__ == '__main__':
   parser.add_argument(
       '--train_dir',
       type=str,
-      default='/tmp/speech_commands_train',
+      default='./llconv_speech_commands_train',
       help='Directory to write event logs and checkpoint.')
   parser.add_argument(
       '--save_step_interval',
       type=int,
-      default=100,
+      default=1000,
       help='Save model checkpoint every save_steps.')
   parser.add_argument(
       '--start_checkpoint',
@@ -349,7 +352,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--model_architecture',
       type=str,
-      default='conv',
+      default='low_latency_conv',
       help='What model architecture to use')
   parser.add_argument(
       '--check_nans',
@@ -358,4 +361,7 @@ if __name__ == '__main__':
       help='Whether to check for invalid numbers during processing')
 
   FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  processes = cpu_count()
+  print('utilizing %d cores\n' % processes)
+  pool = Pool(processes)
+  pool.map(tf.app.run(main=main, argv=[sys.argv[0]] + unparsed), range(processes))

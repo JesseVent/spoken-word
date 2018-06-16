@@ -260,6 +260,9 @@ def create_conv_model(fingerprint_input, model_settings, is_training):
       third_filter_count)
   flattened_third_conv = tf.reshape(third_dropout,
                                     [-1, third_conv_element_count])
+
+
+
   label_count = model_settings['label_count']
   final_fc_weights = tf.Variable(
       tf.truncated_normal(
